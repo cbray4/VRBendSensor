@@ -6,6 +6,12 @@ const int inputPin = A0;
 int bendSenseValue
 int bendSensePrev = 0
 
+// Serial read variables
+const byte numChars = 32;
+char receivedChars[numChars];
+
+boolean newData = false;
+
 void setup() {
   // put your setup code here, to run once:
   pinMode(inputPin, INPUT);
@@ -17,6 +23,7 @@ void setup() {
   // These values are just wild guesses.
 
   Keyboard.begin();
+
   Serial.begin(9600);
   Serial.println("Beginning monitoring of bend sensor!");
 }
@@ -28,6 +35,11 @@ void loop() {
   bendSenseValue = analogRead(inputPin);
   
   //bendSenseValue = debugGetValueFromSerialConsole();
+
+  recvWithStartEndMarkers();
+  showNewData();
+
+/* OLD SERIAL STUFF, IGNORE FOR NOW! FOCUS ON COMMUNICATION!
 
   // This outputs the value of the inputPin to the serial console
   Serial.println(bendSenseValue);
@@ -46,6 +58,48 @@ void loop() {
   }
   // store this value to be compared to later.
   bendSensePrev = bendSenseValue
+  */
+}
+
+void recvWithStartEndMarkers() {
+    static boolean recvInProgress = false;
+    static byte ndx = 0;
+    char startMarker = '<';
+    char endMarker = '>';
+    char rc;
+ 
+    while (Serial.available() > 0 && newData == false) {
+        rc = Serial.read();
+
+        if (recvInProgress == true) {
+            if (rc != endMarker) {
+                receivedChars[ndx] = rc;
+                ndx++;
+                if (ndx >= numChars) {
+                    ndx = numChars - 1;
+                }
+            }
+            else {
+                receivedChars[ndx] = '\0'; // terminate the string
+                recvInProgress = false;
+                ndx = 0;
+                newData = true;
+            }
+        }
+
+        else if (rc == startMarker) {
+            recvInProgress = true;
+        }
+    }
+}
+
+void showNewData() {
+    if (newData == true) {
+        Serial.print("This just in ... ");
+        Serial.println(receivedChars);
+        newData = false;
+        // from here we parse our data. Like, <OK> means we are connected, etc.
+    }
 }
 
 // used for debugging, if you don't want to set up a bend sensor
